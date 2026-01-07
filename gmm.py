@@ -20,17 +20,17 @@ class KMeans():
 
 class GaussianMixture():
     def __init__(self, n_components=1, max_iter=100):
-        self.k = n_components
+        self.n_components = n_components
         self.means, self.covariances,self.resp ,self.weights = None, None,None,None
-        self.init_weights()
+        self._init_weights()
 
-    def init_weights(self,n_components):
-        self.w = np.ones((n_components,))/n_components
-        if not np.allclose(self.w.sum(), 1):
+    def _init_weights(self,n_components):
+        self.weights = np.ones((n_components,))/n_components
+        if not np.allclose(self.weights.sum(), 1):
            print("Weights not normalized")
 
     
-    def init_distributions(self,X, n_clusters):
+    def _init_distributions(self,X, n_clusters):
         # initializing using k-means initialization
         n_samples, n_features = X.shape
         centroids = X[np.random.choice(n_samples,size=n_clusters)]
@@ -47,6 +47,17 @@ class GaussianMixture():
         for i in range(n_clusters):
             self.covariances[i] = np.cov(X[assignments[:,i] == 1].T)
     
-    def E_step(self, X):
-        self.resp = np.empty
+    def _estimate_prob(x, mean, cov):
+        z = x - mean
+        exp = np.exp(-0.5 * (z.T @ np.linalg.inv(cov) @ z))
+        prob = (2*np.pi)**(mean.shape[1]/2) * (np.linalg.det(cov)**-0.5) * exp
+        return prob
+    
+    def _E_step(self, X):
+        n_samples, n_features = X.shape
+        self.resp = np.empty((n_samples, self.n_components))
+        for n in range(n_samples):
+            for k in range(self.n_components):
+                self.resp[n][k] = self.weights[k] * self._estimate_prob(X[n], self.means[k], self.covariances[k])
 
+        self.resp /= self.resp.sum(1, keepdims=True)
